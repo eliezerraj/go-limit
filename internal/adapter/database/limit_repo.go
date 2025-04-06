@@ -64,7 +64,7 @@ func (w WorkerRepository) AddTransactionLimit(ctx context.Context, tx pgx.Tx, tr
 									transactionLimit.TransactionAt,
 									transactionLimit.Currency,
 									transactionLimit.Amount,
-									transactionLimit.TenantID,
+									transactionLimit.TenantId,
 									)
 
 	var id int
@@ -108,7 +108,7 @@ func (w WorkerRepository) AddBreachLimit(ctx context.Context, tx pgx.Tx, breachL
 									breachLimit.Amount,
 									breachLimit.Count,
 									breachLimit.CreatedAt,
-									breachLimit.TenantID,
+									breachLimit.TenantId,
 									)
 
 	var id int
@@ -146,7 +146,7 @@ func (w WorkerRepository) GetTransactionLimit(ctx context.Context, transactionLi
 				where category = $2
 				and card_number = $1
 				and mcc = $3
-				and transaction_at between (now() - interval '0.5 hour') and now() `
+				and transaction_at between (now() - interval '0.5 hour') and now()`
 
 	// execute			
 	rows, err := conn.Query(ctx, 

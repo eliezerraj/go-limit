@@ -48,7 +48,7 @@ type TransactionLimit struct {
 	Amount			float64 	`json:"amount,omitempty"`
 	SumAmount		float64 	`json:"transaction_sum_amount,omitempty"`
 	SumCount		int 		`json:"transaction_sum_count,omitempty"`
-	TenantID		string 		`json:"tenant_id,omitempty"`
+	TenantId		string 		`json:"tenant_id,omitempty"`
 }
 
 type SpendLimit struct {
@@ -69,5 +69,5 @@ type BreachLimit struct {
 	Amount			float64 	`json:"breach_amount,omitempty"`
 	Count			int 		`json:"breach_count,omitempty"`
 	CreatedAt		time.Time 	`json:"created_at,omitempty"`
-	TenantID		string 		`json:"tenant_id,omitempty"`
+	TenantId		string 		`json:"tenant_id,omitempty"`
 }
