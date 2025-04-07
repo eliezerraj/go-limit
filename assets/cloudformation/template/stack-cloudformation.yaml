@@ -59,7 +59,7 @@ Resources:
               - //
               - Ref: providerURL
       Policies:
-      - PolicyName: OIDCRoleGoOnboardingPolicy
+      - PolicyName: OIDCRoleGoLimitPolicy
         PolicyDocument:
           Version: '2012-10-17'
           Statement:
