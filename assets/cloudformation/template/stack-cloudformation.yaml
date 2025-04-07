@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: OIDC role
+Description: Template OIDC role v1.0 06/04/2025
 
 Parameters:
   Versao:
@@ -13,7 +13,7 @@ Parameters:
     Type: String
   ServiceAccountName:
     Type: String
-    Default: sa-go-onboarding
+    Default: sa-go-limit
   K8Namespace:
     Type: String
     Description: Namespace
@@ -21,22 +21,22 @@ Parameters:
 Mappings:
   Tag:
     service:
-      value: go-onboarding
+      value: go-limit
     owner:
       value: architecture
     platform:
       value: poc
     application:
-      value: go-onboarding
+      value: go-limit
     component:
-      value: go-onboarding
+      value: go-limit
     PCIClassification:
       value: non-pci
 Resources:
   OIDCRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: OIDCRoleGoOnboarding
+      RoleName: OIDCRoleGoLimit
       AssumeRolePolicyDocument:
         Fn::Sub:
         - "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"\
