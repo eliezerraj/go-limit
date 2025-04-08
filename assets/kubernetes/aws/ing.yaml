@@ -22,3 +22,13 @@ spec:
               name: svc-go-limit
               port:
                 number: 6002
+    - host: go-limit.architecture.caradhras.io
+      http:
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: svc-go-limit
+              port:
+                number: 6002
