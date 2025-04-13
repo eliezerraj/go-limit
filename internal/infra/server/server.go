@@ -60,7 +60,7 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 		otel.SetTextMapPropagator(xray.Propagator{})
 		otel.SetTracerProvider(tp)
 	}
-
+	
 	defer func() { 
 		if tp != nil {
 			err := tp.Shutdown(ctx)
