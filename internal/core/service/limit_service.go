@@ -84,7 +84,6 @@ func (s *WorkerService) GetTransactionLimit(ctx context.Context, transactionLimi
 
 	// check the breach
 	if res_spendLimit.LimitAmount < transactionLimit.SumAmount || res_spendLimit.LimitHour <  transactionLimit.SumCount{
-		
 		transactionLimit.Status = "BREACH_LIMIT:" + transactionLimit.Category
 
 		breach_limit := model.BreachLimit{	FkIdTransLimit: 	transactionLimit.ID ,
