@@ -64,17 +64,28 @@ func (h *HttpRouters) Context(rw http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(rw).Encode(fmt.Sprintf("%v",contextValues))
 }
 
-// About add card
+// About show pgx stats
+func (h *HttpRouters) Stat(rw http.ResponseWriter, req *http.Request) {
+	childLogger.Info().Str("func","Stat").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
+	
+	res := h.workerService.Stat(req.Context())
+
+	json.NewEncoder(rw).Encode(res)
+}
+
+// About add transaction
 func (h *HttpRouters) GetTransactionLimit(rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Info().Str("func","GetTransactionLimit").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
 	
 	span := tracerProvider.Span(req.Context(), "adapter.api.GetTransactionLimit")
 	defer span.End()
 
+	trace_id := fmt.Sprintf("%v",req.Context().Value("trace-request-id"))
+
 	transactionLimit := model.TransactionLimit{}
 	err := json.NewDecoder(req.Body).Decode(&transactionLimit)
     if err != nil {
-		core_apiError = core_apiError.NewAPIError(err, http.StatusBadRequest)
+		core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusBadRequest)
 		return &core_apiError
     }
 	defer req.Body.Close()
@@ -83,9 +94,9 @@ func (h *HttpRouters) GetTransactionLimit(rw http.ResponseWriter, req *http.Requ
 	if err != nil {
 		switch err {
 		case erro.ErrNotFound:
-			core_apiError = core_apiError.NewAPIError(err, http.StatusNotFound)
+			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusNotFound)
 		default:
-			core_apiError = core_apiError.NewAPIError(err, http.StatusInternalServerError)
+			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusInternalServerError)
 		}
 		return &core_apiError
 	}
