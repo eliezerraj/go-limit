@@ -31,6 +31,28 @@ func NewWorkerRepository(databasePGServer *go_core_pg.DatabasePGServer) *WorkerR
 	}
 }
 
+
+// Above get stats from database
+func (w WorkerRepository) Stat(ctx context.Context) (go_core_pg.PoolStats){
+	childLogger.Info().Str("func","Stat").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+	
+	stats := w.DatabasePGServer.Stat()
+
+	resPoolStats := go_core_pg.PoolStats{
+		AcquireCount:         stats.AcquireCount(),
+		AcquiredConns:        stats.AcquiredConns(),
+		CanceledAcquireCount: stats.CanceledAcquireCount(),
+		ConstructingConns:    stats.ConstructingConns(),
+		EmptyAcquireCount:    stats.EmptyAcquireCount(),
+		IdleConns:            stats.IdleConns(),
+		MaxConns:             stats.MaxConns(),
+		TotalConns:           stats.TotalConns(),
+	}
+
+	return resPoolStats
+}
+
+// Above add transaction limit
 func (w WorkerRepository) AddTransactionLimit(ctx context.Context, tx pgx.Tx, transactionLimit model.TransactionLimit) (*model.TransactionLimit, error){
 	childLogger.Info().Str("func","AddTransactionLimit").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
 
