@@ -102,7 +102,7 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 	})
 	
 	addTransactionLimit := myRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
-	addTransactionLimit.HandleFunc("/transactionLimit", core_middleware.MiddleWareErrorHandler(httpRouters.GetTransactionLimit))		
+	addTransactionLimit.HandleFunc("/checkLimitTransaction", core_middleware.MiddleWareErrorHandler(httpRouters.CheckLimitTransaction))		
 	addTransactionLimit.Use(otelmux.Middleware("go-limit"))
 
 	srv := http.Server{

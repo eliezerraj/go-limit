@@ -35,12 +35,12 @@ func (s *WorkerService) Stat(ctx context.Context) (go_core_pg.PoolStats){
 	return s.workerRepository.Stat(ctx)
 }
 
-// About create a person
-func (s *WorkerService) GetTransactionLimit(ctx context.Context, transactionLimit model.TransactionLimit) (*model.TransactionLimit, error){
-	childLogger.Info().Str("func","GetTransactionLimit").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Interface("transactionLimit", transactionLimit).Send()
+// About check the limit
+func (s *WorkerService) CheckLimitTransaction(ctx context.Context, limit model.Limit) (*[]model.LimitTransaction, error){
+	childLogger.Info().Str("func","CheckLimitTransaction").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Interface("limit", limit).Send()
 
 	// trace
-	span := tracerProvider.Span(ctx, "service.GetTransactionLimit")
+	span := tracerProvider.Span(ctx, "service.CheckLimitTransaction")
 	defer span.End()
 	
 	// prepare batabase
@@ -60,52 +60,90 @@ func (s *WorkerService) GetTransactionLimit(ctx context.Context, transactionLimi
 		span.End()
 	}()
 
-	// Businness rule
-	if transactionLimit.TransactionAt.IsZero() {
-		transactionLimit.TransactionAt = time.Now()
-	}
-	transactionLimit.Status = "REQUESTED"
-
-	// save the transaction
-	res_transactionLimit, err := s.workerRepository.AddTransactionLimit(ctx, tx, transactionLimit)
-	if err != nil {
-		return nil, err
-	}
-	transactionLimit.ID = res_transactionLimit.ID
-
-	// get the current spending limit
-	res_spendLimit, err := s.workerRepository.GetSpendLimit(ctx, transactionLimit)
+	// check the type limit
+	type_limit := model.TypeLimit{Code: limit.TypeLimit}
+	_, err = s.workerRepository.GetTypeLimit(ctx, type_limit)
 	if err != nil {
 		return nil, err
 	}
 
-	// get the transaction limit status
-	res_transactionLimit, err = s.workerRepository.GetTransactionLimit(ctx, transactionLimit)
+	// get list order limit
+	res_order_limit := model.OrderLimit{TypeLimit: limit.TypeLimit,
+										CounterLimit: limit.OrderLimit}
+
+	res_lis_order_limit, err := s.workerRepository.GetOrderLimit(ctx, res_order_limit)
 	if err != nil {
 		return nil, err
 	}
-	transactionLimit.SumAmount = res_transactionLimit.SumAmount
-	transactionLimit.SumCount = res_transactionLimit.SumCount
 
-	childLogger.Info().Interface("res_spendLimit",res_spendLimit ).Send()
-	childLogger.Info().Interface("res_transactionLimit",res_transactionLimit ).Send()
+	//childLogger.Info().Interface("== 1 ===> res_lis_order_limit", res_lis_order_limit ).Send()
 
-	// check the breach
-	if res_spendLimit.LimitAmount < transactionLimit.SumAmount || res_spendLimit.LimitHour <  transactionLimit.SumCount{
-		transactionLimit.Status = "BREACH_LIMIT:" + transactionLimit.Category
+	list_limitTransaction := []model.LimitTransaction{}
 
-		breach_limit := model.BreachLimit{	FkIdTransLimit: 	transactionLimit.ID ,
-											TransactionId: 		transactionLimit.TransactionId ,
-											Mcc: 				transactionLimit.Mcc,
-											Status: 			transactionLimit.Status,
-											Amount: 			res_spendLimit.LimitAmount - transactionLimit.SumAmount,
-											Count: 				transactionLimit.SumCount }
+	for _, val := range *res_lis_order_limit{
+		// get all transaction per key and per count limit
+		
+		limit.TypeLimit = val.TypeLimit
+		limit.OrderLimit = val.Type
+		limit.CounterLimit = val.CounterLimit
+		
+		res_limit_trans_per_key, err := s.workerRepository.GetLimitTransactionPerKey(ctx, limit)
+		if err != nil {
+				return nil, err
+		}
 
-		_, err = s.workerRepository.AddBreachLimit(ctx, tx, breach_limit)
+		//childLogger.Info().Interface("== 22 ===> res_limit_trans_per_key", res_limit_trans_per_key ).Send()
+
+		var tmp_amount float64
+		var tmp_status = "LIMIT:APROVED"
+		if val.CounterLimit == "VALUE" {
+			//childLogger.Info().Interface("== 22 VALUE ===> float64(res_limit_trans_per_key.Amount) ", float64(res_limit_trans_per_key.Amount) ).Send()
+			//childLogger.Info().Interface("== 22 VALUE ===> val.Amount ", val.Amount ).Send()
+
+			tmp_amount =  limit.Amount 
+			if float64(res_limit_trans_per_key.Amount) > float64(val.Amount) {
+				tmp_status = "LIMIT:VALUE:BREACH"
+			} else {
+				tmp_status  = "LIMIT:VALUE:APPROVED"
+			}
+		}
+
+		if val.CounterLimit == "QUANTITY" {
+			//childLogger.Info().Interface("== 22 QUANTITY ===> res_limit_trans_per_key", float64(res_limit_trans_per_key.Amount) ).Send()
+			//childLogger.Info().Interface("== 22 QUANTITY ===> val.Amount", float64(val.Amount) ).Send()
+
+			tmp_amount =  float64(limit.Quantity)
+			if float64(res_limit_trans_per_key.Amount) > float64(val.Amount) {
+				tmp_status = "LIMIT:QUANTITY:BREACH"
+			} else {
+				tmp_status  = "LIMIT:QUANTITY:APPROVED"
+			}
+		}
+
+		if val.CounterLimit == "MINUTE" {
+			continue
+		}
+
+		limitTransaction := model.LimitTransaction{	TransactionId: limit.TransactionId,
+													Key: limit.Key,
+													TypeLimit: limit.TypeLimit,
+													CounterLimit: val.CounterLimit,
+													OrderLimit: limit.OrderLimit,
+													Status: tmp_status,
+													Amount: tmp_amount,
+													CreareAt: time.Now(), 
+												} 
+			
+		// save the transaction
+		res_limit_transaction, err := s.workerRepository.AddLimitTransaction(ctx, tx, limitTransaction)
 		if err != nil {
 			return nil, err
 		}
+		//childLogger.Info().Interface("---3333--->res_limit_transaction",res_limit_transaction ).Send()
+
+		limitTransaction.ID = res_limit_transaction.ID
+		list_limitTransaction = append(list_limitTransaction, limitTransaction)
 	}
 
-	return &transactionLimit, nil
+	return &list_limitTransaction, nil
 }

@@ -73,24 +73,24 @@ func (h *HttpRouters) Stat(rw http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(rw).Encode(res)
 }
 
-// About add transaction
-func (h *HttpRouters) GetTransactionLimit(rw http.ResponseWriter, req *http.Request) error {
-	childLogger.Info().Str("func","GetTransactionLimit").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
+// About check and transaction
+func (h *HttpRouters) CheckLimitTransaction(rw http.ResponseWriter, req *http.Request) error {
+	childLogger.Info().Str("func","CheckLimitTransaction").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
 	
-	span := tracerProvider.Span(req.Context(), "adapter.api.GetTransactionLimit")
+	span := tracerProvider.Span(req.Context(), "adapter.api.CheckLimitTransaction")
 	defer span.End()
 
 	trace_id := fmt.Sprintf("%v",req.Context().Value("trace-request-id"))
 
-	transactionLimit := model.TransactionLimit{}
-	err := json.NewDecoder(req.Body).Decode(&transactionLimit)
+	limit := model.Limit{}
+	err := json.NewDecoder(req.Body).Decode(&limit)
     if err != nil {
 		core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusBadRequest)
 		return &core_apiError
     }
 	defer req.Body.Close()
 
-	res, err := h.workerService.GetTransactionLimit(req.Context(), transactionLimit)
+	res, err := h.workerService.CheckLimitTransaction(req.Context(), limit)
 	if err != nil {
 		switch err {
 		case erro.ErrNotFound:
