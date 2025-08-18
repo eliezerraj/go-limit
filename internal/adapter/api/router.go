@@ -2,6 +2,8 @@ package api
 
 import (
 	"fmt"
+	"time"
+	"context"
 	"encoding/json"
 	"reflect"
 	"net/http"
@@ -24,14 +26,17 @@ var tracerProvider go_core_observ.TracerProvider
 
 type HttpRouters struct {
 	workerService 	*service.WorkerService
+	ctxTimeout		time.Duration
 }
 
 // Above create routers
-func NewHttpRouters(workerService *service.WorkerService) HttpRouters {
+func NewHttpRouters(workerService *service.WorkerService,
+					ctxTimeout	time.Duration) HttpRouters {
 	childLogger.Info().Str("func","NewHttpRouters").Send()
 
 	return HttpRouters{
 		workerService: workerService,
+		ctxTimeout: ctxTimeout,
 	}
 }
 
@@ -76,11 +81,14 @@ func (h *HttpRouters) Stat(rw http.ResponseWriter, req *http.Request) {
 // About check and transaction
 func (h *HttpRouters) CheckLimitTransaction(rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Info().Str("func","CheckLimitTransaction").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
-	
-	span := tracerProvider.Span(req.Context(), "adapter.api.CheckLimitTransaction")
+
+	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
+    defer cancel()
+
+	span := tracerProvider.Span(ctx, "adapter.api.CheckLimitTransaction")
 	defer span.End()
 
-	trace_id := fmt.Sprintf("%v",req.Context().Value("trace-request-id"))
+	trace_id := fmt.Sprintf("%v", ctx.Value("trace-request-id"))
 
 	limit := model.Limit{}
 	err := json.NewDecoder(req.Body).Decode(&limit)
@@ -90,7 +98,7 @@ func (h *HttpRouters) CheckLimitTransaction(rw http.ResponseWriter, req *http.Re
     }
 	defer req.Body.Close()
 
-	res, err := h.workerService.CheckLimitTransaction(req.Context(), limit)
+	res, err := h.workerService.CheckLimitTransaction(ctx, limit)
 	if err != nil {
 		switch err {
 		case erro.ErrNotFound:
