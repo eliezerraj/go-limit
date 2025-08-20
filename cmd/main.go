@@ -44,9 +44,8 @@ func init(){
 // Above main
 func main (){
 	childLogger.Info().Str("func","main").Interface("appServer",appServer).Send()
-
-	ctx, cancel := context.WithTimeout(	context.Background(), 
-										time.Duration( appServer.Server.ReadTimeout ) * time.Second)
+	
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Open Database
