@@ -79,6 +79,24 @@ func (h *HttpRouters) Stat(rw http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(rw).Encode(res)
 }
 
+// About handle error
+func (h *HttpRouters) ErrorHandler(trace_id string, err error) *coreJson.APIError {
+	if strings.Contains(err.Error(), "context deadline exceeded") {
+    	err = erro.ErrTimeout
+	} 
+	switch err {
+	case erro.ErrBadRequest:
+		core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusBadRequest)
+	case erro.ErrNotFound:
+		core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusNotFound)
+	case erro.ErrTimeout:
+		core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusGatewayTimeout)
+	default:
+		core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusInternalServerError)
+	}
+	return &core_apiError
+}
+
 // About check and transaction
 func (h *HttpRouters) CheckLimitTransaction(rw http.ResponseWriter, req *http.Request) error {
 	childLogger.Info().Str("func","CheckLimitTransaction").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
@@ -94,27 +112,13 @@ func (h *HttpRouters) CheckLimitTransaction(rw http.ResponseWriter, req *http.Re
 	limit := model.Limit{}
 	err := json.NewDecoder(req.Body).Decode(&limit)
     if err != nil {
-		core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusBadRequest)
-		return &core_apiError
+		return h.ErrorHandler(trace_id, erro.ErrBadRequest)
     }
 	defer req.Body.Close()
 
 	res, err := h.workerService.CheckLimitTransaction(ctx, limit)
 	if err != nil {
-
-		if strings.Contains(err.Error(), "context deadline exceeded") {
-    		err = erro.ErrTimeout
-		}
-
-		switch err {
-		case erro.ErrNotFound:
-			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusNotFound)
-		case erro.ErrTimeout:
-			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusGatewayTimeout)		
-		default:
-			core_apiError = core_apiError.NewAPIError(err, trace_id, http.StatusInternalServerError)
-		}
-		return &core_apiError
+		return h.ErrorHandler(trace_id, err)
 	}
 	
 	return core_json.WriteJSON(rw, http.StatusOK, res)
