@@ -13,8 +13,10 @@ import(
 	go_core_observ "github.com/eliezerraj/go-core/observability"
 )
 
-var tracerProvider go_core_observ.TracerProvider
-var childLogger = log.With().Str("component","go-limit").Str("package","internal.core.service").Logger()
+var (
+	tracerProvider go_core_observ.TracerProvider
+	childLogger = log.With().Str("component","go-limit").Str("package","internal.core.service").Logger()
+)
 
 type WorkerService struct {
 	workerRepository 	*database.WorkerRepository}
