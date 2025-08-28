@@ -78,15 +78,17 @@ func (s *WorkerService) CheckLimitTransaction(ctx context.Context, limit model.L
 
 	//childLogger.Info().Interface("== 1 ===> res_lis_order_limit", res_lis_order_limit ).Send()
 
+	// Create a list of limit transaction
 	list_limitTransaction := []model.LimitTransaction{}
 
+	// for each order limit check the limit transaction 
 	for _, val := range *res_lis_order_limit{
-		// get all transaction per key and per count limit
-		
+
 		limit.TypeLimit = val.TypeLimit
 		limit.OrderLimit = val.Type
 		limit.CounterLimit = val.CounterLimit
 		
+		// get all transaction per key and per count limit
 		res_limit_trans_per_key, err := s.workerRepository.GetLimitTransactionPerKey(ctx, limit)
 		if err != nil {
 				return nil, err
@@ -94,8 +96,10 @@ func (s *WorkerService) CheckLimitTransaction(ctx context.Context, limit model.L
 
 		//childLogger.Info().Interface("== 22 ===> res_limit_trans_per_key", res_limit_trans_per_key ).Send()
 
+		// check if the limit is breach
 		var tmp_amount float64
 		var tmp_status = "LIMIT:APROVED"
+
 		if val.CounterLimit == "VALUE" {
 			//childLogger.Info().Interface("== 22 VALUE ===> float64(res_limit_trans_per_key.Amount) ", float64(res_limit_trans_per_key.Amount) ).Send()
 			//childLogger.Info().Interface("== 22 VALUE ===> val.Amount ", val.Amount ).Send()
@@ -139,6 +143,7 @@ func (s *WorkerService) CheckLimitTransaction(ctx context.Context, limit model.L
 		if err != nil {
 			return nil, err
 		}
+
 		//childLogger.Info().Interface("---3333--->res_limit_transaction",res_limit_transaction ).Send()
 
 		limitTransaction.ID = res_limit_transaction.ID
