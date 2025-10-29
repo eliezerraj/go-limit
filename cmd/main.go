@@ -22,7 +22,6 @@ var(
 	appServer	model.AppServer
 	databaseConfig 		go_core_pg.DatabaseConfig
 	databasePGServer 	go_core_pg.DatabasePGServer
-
 	childLogger = log.With().Str("component","go-limit").Str("package", "main").Logger()
 )
 

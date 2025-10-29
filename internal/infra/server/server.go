@@ -20,20 +20,25 @@ import (
 	"github.com/eliezerraj/go-core/middleware"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/contrib/propagators/aws/xray"
+	"go.opentelemetry.io/otel/trace"
+	//"go.opentelemetry.io/contrib/propagators/aws/xray"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
-var childLogger = log.With().Str("component","go-limit").Str("package","internal.infra.server").Logger()
-
-var core_middleware middleware.ToolsMiddleware
-var tracerProvider go_core_observ.TracerProvider
-var infoTrace go_core_observ.InfoTrace
+var (
+	childLogger = log.With().Str("component","go-limit").Str("package","internal.infra.server").Logger()
+	core_middleware middleware.ToolsMiddleware
+	tracerProvider go_core_observ.TracerProvider
+	infoTrace go_core_observ.InfoTrace
+	tracer	trace.Tracer
+)
 
 type HttpServer struct {
 	httpServer	*model.Server
 }
 
+// About create new http server
 func NewHttpAppServer(httpServer *model.Server) HttpServer {
 	childLogger.Info().Str("func","NewHttpAppServer").Send()
 	return HttpServer{httpServer: httpServer }
@@ -57,8 +62,9 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 											&infoTrace)
 
 	if tp != nil {
-		otel.SetTextMapPropagator(xray.Propagator{})
+		otel.SetTextMapPropagator(propagation.TraceContext{}) // propagation.TraceContext{} xray.Propagator{}
 		otel.SetTracerProvider(tp)
+		tracer = tp.Tracer(appServer.InfoPod.PodName)
 	}
 	
 	defer func() { 
