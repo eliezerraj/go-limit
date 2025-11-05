@@ -1,7 +1,7 @@
 #docker build -t go-limit .
 #docker run -dit --name go-limit -p 6002:6002 go-limit sleep infinity
 
-FROM golang:1.23.3 As builder
+FROM golang:1.24 As builder
 
 RUN apt-get update && apt-get install bash && apt-get install -y --no-install-recommends ca-certificates
 
