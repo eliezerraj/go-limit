@@ -104,7 +104,7 @@ func (h *HttpRouters) CheckLimitTransaction(rw http.ResponseWriter, req *http.Re
 	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
     defer cancel()
 
-	span := tracerProvider.Span(ctx, "adapter.api.CheckLimitTransaction")
+	ctx, span := tracerProvider.SpanCtx(ctx, "adapter.api.CheckLimitTransaction")
 	defer span.End()
 
 	trace_id := fmt.Sprintf("%v", ctx.Value("trace-request-id"))

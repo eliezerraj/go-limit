@@ -64,6 +64,7 @@ func (w WorkerRepository) GetTypeLimit(ctx context.Context, typeLimit model.Type
 	// prepare database
 	conn, err := w.DatabasePGServer.Acquire(ctx)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer w.DatabasePGServer.Release(conn)
@@ -81,6 +82,7 @@ func (w WorkerRepository) GetTypeLimit(ctx context.Context, typeLimit model.Type
 							query, 
 							typeLimit.Code)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer rows.Close()
@@ -92,6 +94,7 @@ func (w WorkerRepository) GetTypeLimit(ctx context.Context, typeLimit model.Type
 							&res_type_limit.CreateAt,
 						)
 		if err != nil {
+			childLogger.Error().Err(err).Send()
 			return nil, errors.New(err.Error())
         }
 		return &res_type_limit, nil
@@ -109,6 +112,7 @@ func (w WorkerRepository) GetOrderLimit(ctx context.Context, orderLimit model.Or
 	// prepare database
 	conn, err := w.DatabasePGServer.Acquire(ctx)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer w.DatabasePGServer.Release(conn)
@@ -129,6 +133,7 @@ func (w WorkerRepository) GetOrderLimit(ctx context.Context, orderLimit model.Or
 							orderLimit.TypeLimit,
 							orderLimit.CounterLimit)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer rows.Close()
@@ -144,6 +149,7 @@ func (w WorkerRepository) GetOrderLimit(ctx context.Context, orderLimit model.Or
 							&res_order_limit.Amount,
 						)
 		if err != nil {
+			childLogger.Error().Err(err).Send()
 			return nil, errors.New(err.Error())
         }
 
@@ -164,6 +170,7 @@ func (w WorkerRepository) GetLimitTransactionPerKey(ctx context.Context, limit m
 	// prepare database
 	conn, err := w.DatabasePGServer.Acquire(ctx)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer w.DatabasePGServer.Release(conn)
@@ -189,6 +196,7 @@ func (w WorkerRepository) GetLimitTransactionPerKey(ctx context.Context, limit m
 							limit.CounterLimit,
 						)
 	if err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer rows.Close()
@@ -197,6 +205,7 @@ func (w WorkerRepository) GetLimitTransactionPerKey(ctx context.Context, limit m
 		err := rows.Scan( &res_limit.Amount,
 						  &res_limit.Quantity )
 		if err != nil {
+			childLogger.Error().Err(err).Send()
 			return nil, errors.New(err.Error())
         }
 		return &res_limit, nil
@@ -241,6 +250,7 @@ func (w WorkerRepository) AddLimitTransaction(ctx context.Context, tx pgx.Tx, li
 	var id int
 	
 	if err := row.Scan(&id); err != nil {
+		childLogger.Error().Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 

@@ -42,7 +42,7 @@ func (s *WorkerService) CheckLimitTransaction(ctx context.Context, limit model.L
 	childLogger.Info().Str("func","CheckLimitTransaction").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Interface("limit", limit).Send()
 
 	// trace
-	span := tracerProvider.Span(ctx, "service.CheckLimitTransaction")
+	ctx, span := tracerProvider.SpanCtx(ctx, "service.CheckLimitTransaction")
 	defer span.End()
 	
 	// prepare batabase
