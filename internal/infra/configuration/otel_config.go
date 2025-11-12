@@ -9,11 +9,13 @@ import(
 )
 
 func GetOtelEnv() go_core_observ.ConfigOTEL {
-	childLogger.Info().Str("func","GetOtelEnv").Send()
+	childLogger.Info().
+				Str("func","GetOtelEnv").Send()
 
 	err := godotenv.Load(".env")
 	if err != nil {
-		childLogger.Info().Err(err).Send()
+		childLogger.Info().
+					Err(err).Send()
 	}
 
 	var configOTEL	go_core_observ.ConfigOTEL

@@ -19,7 +19,9 @@ import (
 )
 
 var (
-	childLogger = log.With().Str("component", "go-limit").Str("package", "internal.adapter.api").Logger()
+	childLogger = log.With().
+					Str("component", "go-limit").
+					Str("package", "internal.adapter.api").Logger()
 	core_json coreJson.CoreJson
 	core_apiError coreJson.APIError
 	tracerProvider go_core_observ.TracerProvider
@@ -33,7 +35,8 @@ type HttpRouters struct {
 // Above create routers
 func NewHttpRouters(workerService *service.WorkerService,
 					ctxTimeout	time.Duration) HttpRouters {
-	childLogger.Info().Str("func","NewHttpRouters").Send()
+	childLogger.Info().
+				Str("func","NewHttpRouters").Send()
 
 	return HttpRouters{
 		workerService: workerService,
@@ -43,28 +46,34 @@ func NewHttpRouters(workerService *service.WorkerService,
 
 // About return a health
 func (h *HttpRouters) Health(rw http.ResponseWriter, req *http.Request) {
-	childLogger.Info().Str("func","Health").Send()
+	childLogger.Info().
+				Str("func","Health").Send()
 
 	json.NewEncoder(rw).Encode(model.MessageRouter{Message: "true"})
 }
 
 // About return a live
 func (h *HttpRouters) Live(rw http.ResponseWriter, req *http.Request) {
-	childLogger.Info().Str("func","Live").Send()
+	childLogger.Info().
+				Str("func","Live").Send()
 
 	json.NewEncoder(rw).Encode(model.MessageRouter{Message: "true"})
 }
 
 // About show all header received
 func (h *HttpRouters) Header(rw http.ResponseWriter, req *http.Request) {
-	childLogger.Info().Str("func","Header").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
+	childLogger.Info().
+				Str("func","Header").
+				Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
 	
 	json.NewEncoder(rw).Encode(req.Header)
 }
 
 // About show all context values
 func (h *HttpRouters) Context(rw http.ResponseWriter, req *http.Request) {
-	childLogger.Info().Str("func","Context").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
+	childLogger.Info().
+				Str("func","Context").
+				Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
 	
 	contextValues := reflect.ValueOf(req.Context()).Elem()
 	json.NewEncoder(rw).Encode(fmt.Sprintf("%v",contextValues))
@@ -72,7 +81,10 @@ func (h *HttpRouters) Context(rw http.ResponseWriter, req *http.Request) {
 
 // About show pgx stats
 func (h *HttpRouters) Stat(rw http.ResponseWriter, req *http.Request) {
-	childLogger.Info().Str("func","Stat").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
+	childLogger.Info().
+				Str("func","Stat").
+				Interface("trace-resquest-id", req.Context().
+				Value("trace-request-id")).Send()
 	
 	res := h.workerService.Stat(req.Context())
 
@@ -99,7 +111,9 @@ func (h *HttpRouters) ErrorHandler(trace_id string, err error) *coreJson.APIErro
 
 // About check and transaction
 func (h *HttpRouters) CheckLimitTransaction(rw http.ResponseWriter, req *http.Request) error {
-	childLogger.Info().Str("func","CheckLimitTransaction").Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
+	childLogger.Info().
+				Str("func","CheckLimitTransaction").
+				Interface("trace-resquest-id", req.Context().Value("trace-request-id")).Send()
 
 	ctx, cancel := context.WithTimeout(req.Context(), h.ctxTimeout * time.Second)
     defer cancel()

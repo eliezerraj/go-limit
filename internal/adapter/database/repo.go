@@ -17,7 +17,10 @@ import (
 
 var (
 	tracerProvider go_core_observ.TracerProvider
-	childLogger = log.With().Str("component","go-limit").Str("package","internal.core.database").Logger()
+	childLogger = log.With().
+						Str("component","go-limit").
+						Str("package","internal.core.database").
+						Logger()
 )
 
 type WorkerRepository struct {
@@ -26,7 +29,9 @@ type WorkerRepository struct {
 
 // Above new worker
 func NewWorkerRepository(databasePGServer *go_core_pg.DatabasePGServer) *WorkerRepository{
-	childLogger.Info().Str("func","NewWorkerRepository").Send()
+	childLogger.Info().
+				Str("func","NewWorkerRepository").
+				Send()
 
 	return &WorkerRepository{
 		DatabasePGServer: databasePGServer,
@@ -35,7 +40,10 @@ func NewWorkerRepository(databasePGServer *go_core_pg.DatabasePGServer) *WorkerR
 
 // Above get stats from database
 func (w WorkerRepository) Stat(ctx context.Context) (go_core_pg.PoolStats){
-	childLogger.Info().Str("func","Stat").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+	childLogger.Info().
+				Str("func","Stat").
+				Interface("trace-resquest-id", ctx.Value("trace-request-id")).
+				Send()
 	
 	stats := w.DatabasePGServer.Stat()
 
@@ -55,7 +63,9 @@ func (w WorkerRepository) Stat(ctx context.Context) (go_core_pg.PoolStats){
 
 // Above get type limit
 func (w WorkerRepository) GetTypeLimit(ctx context.Context, typeLimit model.TypeLimit) (*model.TypeLimit, error){
-	childLogger.Info().Str("func","GetTypeLimit").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+	childLogger.Info().
+				Str("func","GetTypeLimit").
+				Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
 
 	// trace
 	span := tracerProvider.Span(ctx, "database.GetTypeLimit")
@@ -64,7 +74,8 @@ func (w WorkerRepository) GetTypeLimit(ctx context.Context, typeLimit model.Type
 	// prepare database
 	conn, err := w.DatabasePGServer.Acquire(ctx)
 	if err != nil {
-		childLogger.Error().Err(err).Send()
+		childLogger.Error().
+					Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer w.DatabasePGServer.Release(conn)
@@ -82,7 +93,8 @@ func (w WorkerRepository) GetTypeLimit(ctx context.Context, typeLimit model.Type
 							query, 
 							typeLimit.Code)
 	if err != nil {
-		childLogger.Error().Err(err).Send()
+		childLogger.Error().
+					Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer rows.Close()
@@ -94,7 +106,8 @@ func (w WorkerRepository) GetTypeLimit(ctx context.Context, typeLimit model.Type
 							&res_type_limit.CreateAt,
 						)
 		if err != nil {
-			childLogger.Error().Err(err).Send()
+			childLogger.Error().
+						Err(err).Send()
 			return nil, errors.New(err.Error())
         }
 		return &res_type_limit, nil
@@ -104,7 +117,10 @@ func (w WorkerRepository) GetTypeLimit(ctx context.Context, typeLimit model.Type
 }
 
 func (w WorkerRepository) GetOrderLimit(ctx context.Context, orderLimit model.OrderLimit) (*[]model.OrderLimit, error){
-	childLogger.Info().Str("func","GetOrderLimit").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+	childLogger.Info().
+				Str("func","GetOrderLimit").
+				Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+	
 	// trace
 	span := tracerProvider.Span(ctx, "database.GetOrderLimit")
 	defer span.End()
@@ -112,7 +128,8 @@ func (w WorkerRepository) GetOrderLimit(ctx context.Context, orderLimit model.Or
 	// prepare database
 	conn, err := w.DatabasePGServer.Acquire(ctx)
 	if err != nil {
-		childLogger.Error().Err(err).Send()
+		childLogger.Error().
+					Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer w.DatabasePGServer.Release(conn)
@@ -133,7 +150,8 @@ func (w WorkerRepository) GetOrderLimit(ctx context.Context, orderLimit model.Or
 							orderLimit.TypeLimit,
 							orderLimit.CounterLimit)
 	if err != nil {
-		childLogger.Error().Err(err).Send()
+		childLogger.Error().
+					Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer rows.Close()
@@ -149,7 +167,8 @@ func (w WorkerRepository) GetOrderLimit(ctx context.Context, orderLimit model.Or
 							&res_order_limit.Amount,
 						)
 		if err != nil {
-			childLogger.Error().Err(err).Send()
+			childLogger.Error().
+						Err(err).Send()
 			return nil, errors.New(err.Error())
         }
 
@@ -161,7 +180,9 @@ func (w WorkerRepository) GetOrderLimit(ctx context.Context, orderLimit model.Or
 
 // Above get the transaction limit response
 func (w WorkerRepository) GetLimitTransactionPerKey(ctx context.Context, limit model.Limit) (*model.Limit, error){
-	childLogger.Info().Str("func","GetLimitTransactionPerKey").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+	childLogger.Info().
+				Str("func","GetLimitTransactionPerKey").
+				Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
 
 	// trace
 	span := tracerProvider.Span(ctx, "database.GetLimitTransactionPerKey")
@@ -196,7 +217,8 @@ func (w WorkerRepository) GetLimitTransactionPerKey(ctx context.Context, limit m
 							limit.CounterLimit,
 						)
 	if err != nil {
-		childLogger.Error().Err(err).Send()
+		childLogger.Error().
+					Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 	defer rows.Close()
@@ -205,7 +227,8 @@ func (w WorkerRepository) GetLimitTransactionPerKey(ctx context.Context, limit m
 		err := rows.Scan( &res_limit.Amount,
 						  &res_limit.Quantity )
 		if err != nil {
-			childLogger.Error().Err(err).Send()
+			childLogger.Error().
+						Err(err).Send()
 			return nil, errors.New(err.Error())
         }
 		return &res_limit, nil
@@ -216,7 +239,8 @@ func (w WorkerRepository) GetLimitTransactionPerKey(ctx context.Context, limit m
 
 // Above add transaction limit
 func (w WorkerRepository) AddLimitTransaction(ctx context.Context, tx pgx.Tx, limitTransaction model.LimitTransaction) (*model.LimitTransaction, error){
-	childLogger.Info().Str("func","AddLimitTransaction").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+	childLogger.Info().
+				Str("func","AddLimitTransaction").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
 
 	// trace
 	span := tracerProvider.Span(ctx, "database.AddLimitTransaction")
@@ -250,7 +274,8 @@ func (w WorkerRepository) AddLimitTransaction(ctx context.Context, tx pgx.Tx, li
 	var id int
 	
 	if err := row.Scan(&id); err != nil {
-		childLogger.Error().Err(err).Send()
+		childLogger.Error().
+					Err(err).Send()
 		return nil, errors.New(err.Error())
 	}
 

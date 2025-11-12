@@ -19,15 +19,21 @@ import(
 
 var(
 	logLevel = 	zerolog.InfoLevel // zerolog.InfoLevel zerolog.DebugLevel
-	appServer	model.AppServer
-	databaseConfig 		go_core_pg.DatabaseConfig
-	databasePGServer 	go_core_pg.DatabasePGServer
-	childLogger = log.With().Str("component","go-limit").Str("package", "main").Logger()
+	childLogger = log.With().
+						Str("component","go-limit").
+						Str("package", "main").
+						Logger()
+						
+	appServer		model.AppServer
+	databaseConfig 	go_core_pg.DatabaseConfig
+	databasePGServer go_core_pg.DatabasePGServer
 )
 
 // Above init
 func init(){
-	childLogger.Info().Str("func","init").Send()
+	childLogger.Info().
+				Str("func","init").Send()
+
 	zerolog.SetGlobalLevel(logLevel)
 
 	infoPod, server := configuration.GetInfoPod()
@@ -42,7 +48,9 @@ func init(){
 
 // Above main
 func main (){
-	childLogger.Info().Str("func","main").Interface("appServer",appServer).Send()
+	childLogger.Info().
+				Str("func","main").
+				Interface("appServer",appServer).Send()
 	
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -54,9 +62,12 @@ func main (){
 		databasePGServer, err = databasePGServer.NewDatabasePGServer(ctx, *appServer.DatabaseConfig)
 		if err != nil {
 			if count < 3 {
-				log.Error().Err(err).Msg("error open database... trying again !!")
+				childLogger.Warn().
+							Err(nil).Msg("Unable to open database... trying again WARNING !!")
 			} else {
-				log.Error().Err(err).Msg("fatal error open Database aborting")
+				childLogger.Error().
+							Err(err).
+							Msg("Fatal Error open Database ABORTING !!!")
 				panic(err)
 			}
 			time.Sleep(3 * time.Second) //backoff

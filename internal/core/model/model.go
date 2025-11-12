@@ -21,6 +21,9 @@ type InfoPod struct {
 	AvailabilityZone 	string 	`json:"availabilityZone"`
 	IsAZ				bool   	`json:"is_az"`
 	Env					string `json:"enviroment,omitempty"`
+	OtelTraces			bool   	`json:"otel_traces"`
+	OtelMetrics			bool   	`json:"otel_metrics"`
+	OtelLogs			bool   	`json:"otel_logs"`
 	AccountID			string `json:"account_id,omitempty"`
 }
 

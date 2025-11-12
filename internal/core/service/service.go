@@ -15,7 +15,9 @@ import(
 
 var (
 	tracerProvider go_core_observ.TracerProvider
-	childLogger = log.With().Str("component","go-limit").Str("package","internal.core.service").Logger()
+	childLogger = log.With().
+					Str("component","go-limit").
+					Str("package","internal.core.service").Logger()
 )
 
 type WorkerService struct {
@@ -32,14 +34,19 @@ func NewWorkerService(	workerRepository *database.WorkerRepository) *WorkerServi
 
 // About handle/convert http status code
 func (s *WorkerService) Stat(ctx context.Context) (go_core_pg.PoolStats){
-	childLogger.Info().Str("func","Stat").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
+	childLogger.Info().
+				Str("func","Stat").
+				Interface("trace-resquest-id", ctx.Value("trace-request-id")).Send()
 
 	return s.workerRepository.Stat(ctx)
 }
 
 // About check the limit
 func (s *WorkerService) CheckLimitTransaction(ctx context.Context, limit model.Limit) (*[]model.LimitTransaction, error){
-	childLogger.Info().Str("func","CheckLimitTransaction").Interface("trace-resquest-id", ctx.Value("trace-request-id")).Interface("limit", limit).Send()
+	childLogger.Info().
+				Str("func","CheckLimitTransaction").
+				Interface("trace-resquest-id", ctx.Value("trace-request-id")).
+				Interface("limit", limit).Send()
 
 	// trace
 	ctx, span := tracerProvider.SpanCtx(ctx, "service.CheckLimitTransaction")

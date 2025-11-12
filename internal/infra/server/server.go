@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"time"
 	"encoding/json"
 	"net/http"
@@ -13,20 +14,19 @@ import (
 	"github.com/go-limit/internal/adapter/api"	
 	"github.com/go-limit/internal/core/model"
 	go_core_observ "github.com/eliezerraj/go-core/observability"  
-
+	go_core_midleware "github.com/eliezerraj/go-core/middleware"
+	
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
-
-	"github.com/eliezerraj/go-core/middleware"
 
 	// trace
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/propagation"
+	 sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 
 	// Metrics
-	"runtime/metrics"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -34,14 +34,23 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
+	
+	// Logs
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
+	//"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
+	logotel "go.opentelemetry.io/otel/sdk/log"
+	sdklog "go.opentelemetry.io/otel/log"
 )
 
 var (
-	childLogger = log.With().Str("component","go-limit").Str("package","internal.infra.server").Logger()
-	core_middleware middleware.ToolsMiddleware
-	tracerProvider go_core_observ.TracerProvider
-	infoTrace go_core_observ.InfoTrace
-	tracer	trace.Tracer
+	childLogger = log.With().
+					Str("component","go-limit").
+					Str("component","internal.infra.server").
+					Logger()
+	core_middleware go_core_midleware.ToolsMiddleware
+	tracerProvider 	go_core_observ.TracerProvider
+	infoTrace 		go_core_observ.InfoTrace
+	tracer			trace.Tracer
 )
 
 type HttpServer struct {
@@ -50,20 +59,25 @@ type HttpServer struct {
 
 // About create new http server
 func NewHttpAppServer(httpServer *model.Server) HttpServer {
-	childLogger.Info().Str("func","NewHttpAppServer").Send()
+	childLogger.Info().
+				Str("func","NewHttpAppServer").Send()
+
+				
 	return HttpServer{httpServer: httpServer }
 }
 
 // About initialize MeterProvider with Prometheus exporter
 func initMeterProvider(ctx context.Context, serviceName string) (*sdkmetric.MeterProvider, error) {
-	childLogger.Info().Str("func","initMeterProvider").Send()
+	childLogger.Info().
+				Str("func","initMeterProvider").
+				Send()
 
 	// 1. Configurar o Recurso OTel
 	res, err := resource.New(ctx,
 		resource.WithSchemaURL(semconv.SchemaURL),
 		resource.WithAttributes(
 			semconv.ServiceNameKey.String(serviceName),
-			attribute.String("environment", "production"),
+			attribute.String("env", "DEV"),
 		),
 	)
 	if err != nil {
@@ -85,94 +99,228 @@ func initMeterProvider(ctx context.Context, serviceName string) (*sdkmetric.Mete
 	return provider, nil
 }
 
-// About setup Go runtime metrics
-func setupGoRuntimeMetrics(meter metric.Meter) {
-	// Padrões de métricas do runtime do Go que queremos coletar.
-	// O go_memstats_heap_alloc_bytes e o go_cpu_seconds_total são ótimos para começar.
-	childLogger.Info().Str("func","setupGoRuntimeMetrics").Send()
+//About initializa logs
+func initLogger(ctx context.Context, serviceName string) (*logotel.LoggerProvider, error) {
+	childLogger.Info().
+				Str("func","initLogger").
+				Send()
 
-	patterns := []string{
-		"go.cpu.seconds_total",
-		"go.memory.heap.alloc_bytes",
-		"go.memory.gc.cpu.seconds_total",
+	// Configure the OTel Resource (Crucial for Loki labels/service identification)
+	res, err := resource.New(ctx,
+							 resource.WithSchemaURL(semconv.SchemaURL),
+							 resource.WithAttributes(
+								semconv.ServiceNameKey.String(serviceName),
+								semconv.ServiceVersion("1.0.0"),
+								attribute.String("env", "DEV"),
+							 ),
+							)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, pattern := range patterns {
-		_, err := meter.Int64ObservableGauge(
-			pattern,
-			metric.WithDescription("Métrica de runtime do Go"),
-			metric.WithInt64Callback(func(_ context.Context, observer metric.Int64Observer) error {
-				// Usamos o pacote runtime/metrics para obter o valor.
-				sample := make([]metrics.Sample, 1)
-				sample[0].Name = pattern
-				metrics.Read(sample)
+	// Create an OTLP gRPC exporter that sends logs to the OTEL Collector
+	exporter, err := otlploggrpc.New(ctx,
+		otlploggrpc.WithInsecure(),
+		otlploggrpc.WithEndpoint("localhost:4317"), 
+	)
 
-				if sample[0].Value.Kind() == metrics.KindUint64 {
-					// O valor do runtime/metrics é um contador/gauge, transformamos em int64 para o OTel.
-					observer.Observe(int64(sample[0].Value.Uint64()))
-				}
-				return nil
-			}),
+	/*exporter, err := otlploghttp.New(ctx,
+		otlploghttp.WithInsecure(),
+		otlploghttp.WithEndpoint("localhost:4318"),
+		// Optional: send to custom path if collector uses a subpath like "/v1/logs"
+		otlploghttp.WithURLPath("/v1/logs"),
+	)*/
+
+	if err != nil {
+		return nil, err
+	}
+
+	provider := logotel.NewLoggerProvider(
+		logotel.WithResource(res),
+		logotel.WithProcessor(
+			logotel.NewBatchProcessor(exporter),
+		),
+	)
+
+	return provider, nil
+}
+
+func EmitOtelLog(ctx context.Context, 
+				lp *logotel.LoggerProvider, 
+				msg string, 
+				severity sdklog.Severity, 
+				extraAttrs ...attribute.KeyValue) {
+	fmt.Println("1 EmitOtelLog")
+
+	if lp == nil {
+		return
+	}
+
+	// 1. Get the OTel Logger instance
+    otelLogger := lp.Logger("go-limit")
+
+    // 2. Create the log record
+    rec := sdklog.Record{}
+
+	// Set core record data
+	rec.SetTimestamp(time.Now())
+	rec.SetSeverity(severity)
+	rec.SetBody(sdklog.StringValue(msg))
+
+	if sc := trace.SpanContextFromContext(ctx); sc.IsValid() {
+		fmt.Printf("2 TraceID: %d \n", sc.TraceID().String())
+		fmt.Printf("3 SpanID: %d \n", sc.SpanID().String())
+
+		rec.AddAttributes(
+			sdklog.String("trace_id", sc.TraceID().String()),
+			sdklog.String("span_id", sc.SpanID().String()),
 		)
-		if err != nil {
-			childLogger.Error().Err(err).Msg("erro setupGoRuntimeMetrics")
-			log.Printf("Erro ao configurar métrica %s: %v", pattern, err)
-		}
 	}
+
+	//var logAttrs []logotelapi.Attribute
+	for _, kv := range extraAttrs {
+		fmt.Printf("4 Atributew %s %s \n", string(kv.Key), kv.Value.AsInterface() )
+		k := string(kv.Key)
+		v := fmt.Sprintf("%v", kv.Value)
+		rec.AddAttributes(
+			sdklog.String( k , v ),
+		)
+    }
+	// Emit the record*/
+
+	fmt.Printf("5 rec: %v \n", rec)
+	childLogger.Info().Str("func","EmitOtelLog").Interface("rec", rec).Send()
+
+	otelLogger.Emit(ctx, rec)
+}
+
+//About Create Custom Metrics
+var httpRequestsCounter metric.Int64Counter
+var httpLatencyHistogram metric.Float64Histogram
+var err_metric error
+
+func setupCustomMetrics(meter metric.Meter) error {
+	childLogger.Info().Str("func","setupCustomMetrics").Send()
+
+	httpRequestsCounter, err_metric = meter.Int64Counter("eliezer-http_requests_total",
+				metric.WithDescription("Total number of HTTP requests by path"),
+				metric.WithUnit("1"),
+	)
+	if err_metric != nil {
+		childLogger.Error().Err(err_metric).Msg("Erro Create Custom Metrics")
+		return err_metric
+	}
+
+	httpLatencyHistogram, err_metric = meter.Float64Histogram("eliezer-http_server_latency_seconds",
+		metric.WithDescription("Latency of HTTP server requests by path"),
+		metric.WithUnit("s"),
+	)	
+	if err_metric != nil {
+		childLogger.Error().Err(err_metric).Msg("Erro Create Custom Metrics")
+		return err_metric
+	}
+
+	return nil
 }
 
 // About start http server
 func (h HttpServer) StartHttpAppServer(	ctx context.Context, 
 										httpRouters *api.HttpRouters,
 										appServer *model.AppServer) {
-	childLogger.Info().Str("func","StartHttpAppServer").Send()
+	childLogger.Info().
+				Str("func","StartHttpAppServer").
+				Send()
 			
 	// --------- OTEL traces ---------------
-	infoTrace.PodName = appServer.InfoPod.PodName
-	infoTrace.PodVersion = appServer.InfoPod.ApiVersion
-	infoTrace.ServiceType = "k8-workload"
-	infoTrace.Env = appServer.InfoPod.Env
-	infoTrace.AccountID = appServer.InfoPod.AccountID
+	var initTracerProvider *sdktrace.TracerProvider
+	
+	if appServer.InfoPod.OtelTraces {
+		infoTrace.PodName = appServer.InfoPod.PodName
+		infoTrace.PodVersion = appServer.InfoPod.ApiVersion
+		infoTrace.ServiceType = "k8-workload"
+		infoTrace.Env = appServer.InfoPod.Env
+		infoTrace.AccountID = appServer.InfoPod.AccountID
 
-	tp := tracerProvider.NewTracerProvider(	ctx, 
-											appServer.ConfigOTEL, 
-											&infoTrace)
+		initTracerProvider = tracerProvider.NewTracerProvider(	ctx, 
+																appServer.ConfigOTEL, 
+																&infoTrace)
 
-	if tp != nil {
 		otel.SetTextMapPropagator(propagation.TraceContext{})
-		otel.SetTracerProvider(tp)
-		tracer = tp.Tracer(appServer.InfoPod.PodName)
+		otel.SetTracerProvider(initTracerProvider)
+		tracer = initTracerProvider.Tracer(appServer.InfoPod.PodName)
 	}
 
 	// --------- OTEL metrics ---------------
-	var meter metric.Meter
-	meterProvider, err := initMeterProvider(ctx, infoTrace.PodName)
-	if err != nil {
-		childLogger.Error().Err(err).Msg("failed to start runtime instrumentation")
-	} else {
-		meter = meterProvider.Meter(infoTrace.PodName)
-    	setupGoRuntimeMetrics(meter)
+	var meterProvider *sdkmetric.MeterProvider
+
+	if appServer.InfoPod.OtelMetrics {
+		meterProvider, err := initMeterProvider(ctx, infoTrace.PodName)
+		if err != nil {
+			childLogger.Error().Err(err).Msg("Error start Otel Metrics Provider")
+		} else {
+			meter := meterProvider.Meter(infoTrace.PodName)
+
+			setupCustomMetrics(meter)
+			if err != nil {
+				childLogger.Info().Msg("Erro Create Custom Metrics")
+			}
+
+			childLogger.Info().Msg("Otel Metrics Provider started SUCCESSFULL")
+		}
 	}
 
+	// ------------- OTEL logs -------------------
+	var logProvider *logotel.LoggerProvider
+	var err_log error
+
+	if appServer.InfoPod.OtelLogs {
+		logProvider, err_log = initLogger(ctx, infoTrace.PodName)
+		if err_log != nil {
+			childLogger.Error().
+						Err(err_log).
+						Msg("Erro initialize Otel Logger Provider")
+		} else {
+			childLogger.Info().
+						Msg("Otel Logger Provider started SUCCESSFULL")
+		}
+	}
+
+	// handle the final actions
 	defer func() {
+
 		if meterProvider != nil {
 			if err := meterProvider.Shutdown(ctx); err != nil {
-				childLogger.Error().Err(err).Msg("failed to stop instrumentation")
+				childLogger.Error().
+							Err(err).
+							Msg("failed to stop instrumentation")
 			}
 		}
 
-		if tp != nil {
-			err := tp.Shutdown(ctx)
-			if err != nil{
-				childLogger.Error().Err(err).Send()
+		if logProvider != nil {
+			if err := logProvider.Shutdown(ctx); err != nil {
+				childLogger.Error().
+							Err(err).
+							Msg("failed to shutdown otel log provider")
 			}
 		}
+
+		if initTracerProvider != nil {
+			err := initTracerProvider.Shutdown(ctx)
+			if err != nil{
+				childLogger.Error().
+							Err(err).
+							Send()
+			}
+		}
+
 		childLogger.Info().Msg("stop done !!!")
 	}()
 	
+	// Routers
 	myRouter := mux.NewRouter().StrictSlash(true)
 	myRouter.Use(core_middleware.MiddleWareHandlerHeader)
 
+	// Prometheus metrics	
 	myRouter.Handle("/metrics", promhttp.Handler())
 
 	myRouter.HandleFunc("/", func(rw http.ResponseWriter, req *http.Request) {
@@ -197,7 +345,34 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 
 	myRouter.HandleFunc("/info", func(rw http.ResponseWriter, req *http.Request) {
 		childLogger.Info().Str("HandleFunc","/info").Send()
+		start := time.Now()
+		targetPath := "/info"
 
+		req_ctx, cancel := context.WithTimeout(req.Context(), 5 * time.Second)
+    	defer cancel()
+
+		req_ctx, span := tracerProvider.SpanCtx(req_ctx, "adapter.api.info")
+		defer span.End()
+
+		defer func() {
+			if httpLatencyHistogram != nil {
+				duration := time.Since(start).Seconds()
+				httpLatencyHistogram.Record(req.Context(), duration, metric.WithAttributes(attribute.String("http.target", targetPath)))
+			}
+		}()
+
+		if httpRequestsCounter != nil {
+			httpRequestsCounter.Add(req.Context(), 1, metric.WithAttributes(attribute.String("http.target", "/info")))
+		}
+
+		EmitOtelLog(req_ctx, 
+					logProvider, 
+					"handled /info request", 
+					sdklog.SeverityInfo,
+					attribute.String("http.method", "GET"),
+					attribute.String("http.route", "/info"),
+		)
+	
 		rw.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(rw).Encode(appServer)
 	})
