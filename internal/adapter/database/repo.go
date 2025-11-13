@@ -1,10 +1,12 @@
 package database
 
 import (
+	"os"
 	"context"
 	"time"
 	"errors"
-	
+	"github.com/rs/zerolog"
+
 	"github.com/go-limit/internal/core/model"
 	"github.com/go-limit/internal/core/erro"
 
@@ -12,14 +14,16 @@ import (
 	go_core_pg "github.com/eliezerraj/go-core/database/pg"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/rs/zerolog/log"
 )
 
 var (
 	tracerProvider go_core_observ.TracerProvider
-	childLogger = log.With().
+
+	childLogger  = zerolog.New(os.Stdout).
+						With().
 						Str("component","go-limit").
-						Str("package","internal.core.database").
+						Str("package","internal.adapter.database").
+						Timestamp().
 						Logger()
 )
 
@@ -113,6 +117,8 @@ func (w WorkerRepository) GetTypeLimit(ctx context.Context, typeLimit model.Type
 		return &res_type_limit, nil
 	}
 	
+	childLogger.Warn().
+				Err(erro.ErrNotFound).Send()
 	return nil, erro.ErrNotFound
 }
 
@@ -233,7 +239,9 @@ func (w WorkerRepository) GetLimitTransactionPerKey(ctx context.Context, limit m
         }
 		return &res_limit, nil
 	}
-	
+
+	childLogger.Warn().
+				Err(erro.ErrNotFound).Send()
 	return nil, erro.ErrNotFound
 }
 

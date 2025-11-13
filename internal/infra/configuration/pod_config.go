@@ -6,17 +6,21 @@ import(
 	"net"
 	"context"
 
+	"github.com/rs/zerolog"
+
 	"github.com/joho/godotenv"
-	"github.com/rs/zerolog/log"
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/config"
 
 	"github.com/go-limit/internal/core/model"
 )
 
-var childLogger = log.With().
+var	childLogger  = zerolog.New(os.Stdout).
+						With().
 						Str("component","go-limit").
-						Str("package","internal.infra.configuration").Logger()
+						Str("package","internal.infra.configuration").
+						Timestamp().
+						Logger()
 
 // Load the Pod configuration
 func GetInfoPod() (	model.InfoPod, model.Server) {
@@ -69,8 +73,8 @@ func GetInfoPod() (	model.InfoPod, model.Server) {
 	// Get IP
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		log.Error().
-			Err(err).Send()
+		childLogger.Error().
+					Err(err).Send()
 		os.Exit(3)
 	}
 	for _, a := range addrs {

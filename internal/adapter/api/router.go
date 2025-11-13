@@ -1,6 +1,7 @@
 package api
 
 import (
+	"os"
 	"fmt"
 	"time"
 	"context"
@@ -9,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 
 	"github.com/go-limit/internal/core/service"
 	"github.com/go-limit/internal/core/model"
@@ -19,9 +20,13 @@ import (
 )
 
 var (
-	childLogger = log.With().
-					Str("component", "go-limit").
-					Str("package", "internal.adapter.api").Logger()
+	childLogger  = zerolog.New(os.Stdout).
+						With().
+						Str("component","go-limit").
+						Str("package", "internal.adapter.api").
+						Timestamp().
+						Logger()
+						
 	core_json coreJson.CoreJson
 	core_apiError coreJson.APIError
 	tracerProvider go_core_observ.TracerProvider

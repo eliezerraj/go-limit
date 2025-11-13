@@ -37,12 +37,6 @@ func GetOtelEnv() go_core_observ.ConfigOTEL {
 		configOTEL.UseStdoutTracerExporter = false
 	}
 
-	if os.Getenv("USE_OTLP_COLLECTOR") ==  "true" {
-		configOTEL.UseOtlpCollector = true
-	} else {
-		configOTEL.UseOtlpCollector = false
-	}
-
 	if os.Getenv("AWS_CLOUDWATCH_LOG_GROUP") !=  "" {	
 		configOTEL.AWSCloudWatchLogGroup = strings.Split(os.Getenv("AWS_CLOUDWATCH_LOG_GROUP"),",")
 	}

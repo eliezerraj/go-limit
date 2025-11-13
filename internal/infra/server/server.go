@@ -1,15 +1,17 @@
 package server
 
 import (
+	"os"
 	"fmt"
 	"time"
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"os"
 	"os/signal"
 	"syscall"
 	"context"
+
+	"github.com/rs/zerolog"
 
 	"github.com/go-limit/internal/adapter/api"	
 	"github.com/go-limit/internal/core/model"
@@ -17,7 +19,7 @@ import (
 	go_core_midleware "github.com/eliezerraj/go-core/middleware"
 	
 	"github.com/gorilla/mux"
-	"github.com/rs/zerolog/log"
+
 
 	// trace
 	"go.opentelemetry.io/otel"
@@ -43,10 +45,13 @@ import (
 )
 
 var (
-	childLogger = log.With().
-					Str("component","go-limit").
-					Str("component","internal.infra.server").
-					Logger()
+	childLogger  = zerolog.New(os.Stdout).
+						With().
+						Str("component","go-limit").
+						Str("component","internal.infra.server").
+						Timestamp().
+						Logger()
+
 	core_middleware go_core_midleware.ToolsMiddleware
 	tracerProvider 	go_core_observ.TracerProvider
 	infoTrace 		go_core_observ.InfoTrace
@@ -189,7 +194,9 @@ func EmitOtelLog(ctx context.Context,
 	// Emit the record*/
 
 	fmt.Printf("5 rec: %v \n", rec)
-	childLogger.Info().Str("func","EmitOtelLog").Interface("rec", rec).Send()
+	childLogger.Info().
+				Str("func","EmitOtelLog").
+				Interface("rec", rec).Send()
 
 	otelLogger.Emit(ctx, rec)
 }
@@ -200,7 +207,8 @@ var httpLatencyHistogram metric.Float64Histogram
 var err_metric error
 
 func setupCustomMetrics(meter metric.Meter) error {
-	childLogger.Info().Str("func","setupCustomMetrics").Send()
+	childLogger.Info().
+				Str("func","setupCustomMetrics").Send()
 
 	httpRequestsCounter, err_metric = meter.Int64Counter("eliezer-http_requests_total",
 				metric.WithDescription("Total number of HTTP requests by path"),
@@ -262,10 +270,12 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 
 			setupCustomMetrics(meter)
 			if err != nil {
-				childLogger.Info().Msg("Erro Create Custom Metrics")
+				childLogger.Info().
+							Msg("Erro Create Custom Metrics")
 			}
 
-			childLogger.Info().Msg("Otel Metrics Provider started SUCCESSFULL")
+			childLogger.Info().
+						Msg("Otel Metrics Provider started SUCCESSFULL")
 		}
 	}
 
@@ -292,7 +302,7 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 			if err := meterProvider.Shutdown(ctx); err != nil {
 				childLogger.Error().
 							Err(err).
-							Msg("failed to stop instrumentation")
+							Msg("Erro to stop metrics provider")
 			}
 		}
 
@@ -300,7 +310,7 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 			if err := logProvider.Shutdown(ctx); err != nil {
 				childLogger.Error().
 							Err(err).
-							Msg("failed to shutdown otel log provider")
+							Msg("Erro to shutdown log provider")
 			}
 		}
 
@@ -309,11 +319,12 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 			if err != nil{
 				childLogger.Error().
 							Err(err).
-							Send()
+							Msg("Erro to shutdown tracer provider")
 			}
 		}
 
-		childLogger.Info().Msg("stop done !!!")
+		childLogger.Info().
+					Msg("stop done !!!")
 	}()
 	
 	// Routers
@@ -389,12 +400,14 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 		IdleTimeout:  time.Duration(h.httpServer.IdleTimeout) * time.Second, 
 	}
 
-	childLogger.Info().Str("Service Port", strconv.Itoa(h.httpServer.Port)).Send()
+	childLogger.Info().
+				Str("Service Port", strconv.Itoa(h.httpServer.Port)).Send()
 
 	go func() {
 		err := srv.ListenAndServe()
 		if err != nil {
-			childLogger.Error().Err(err).Msg("canceling http mux server !!!")
+			childLogger.Warn().
+						Err(err).Msg("Canceling http mux server !!!")
 		}
 	}()
 
@@ -407,17 +420,22 @@ func (h HttpServer) StartHttpAppServer(	ctx context.Context,
 
 		switch sig {
 		case syscall.SIGHUP:
-			childLogger.Info().Msg("Received SIGHUP: reloading configuration...")
+			childLogger.Info().
+						Msg("Received SIGHUP: reloading configuration...")
 		case syscall.SIGINT, syscall.SIGTERM:
-			childLogger.Info().Msg("Received SIGINT/SIGTERM termination signal. Exiting")
+			childLogger.Info().
+						Msg("Received SIGINT/SIGTERM termination signal. Exiting")
 			return
 		default:
-			childLogger.Info().Interface("Received signal:", sig).Send()
+			childLogger.Info().
+						Interface("Received signal:", sig).Send()
 		}
 	}
 
 	if err := srv.Shutdown(ctx); err != nil && err != http.ErrServerClosed {
-		childLogger.Error().Err(err).Msg("warning dirty shutdown !!!")
+		childLogger.Warn().
+					Err(err).
+					Msg("Dirty shutdown WARNING !!!")
 		return
 	}
 }

@@ -1,10 +1,11 @@
 package service
 
 import(
+	"os"
 	"time"
 	"context"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 
 	"github.com/go-limit/internal/core/model"
 	"github.com/go-limit/internal/adapter/database"
@@ -15,9 +16,13 @@ import(
 
 var (
 	tracerProvider go_core_observ.TracerProvider
-	childLogger = log.With().
-					Str("component","go-limit").
-					Str("package","internal.core.service").Logger()
+
+	childLogger  = zerolog.New(os.Stdout).
+						With().
+						Str("component","go-limit").
+						Str("package","internal.core.service").
+						Timestamp().
+						Logger()
 )
 
 type WorkerService struct {
@@ -25,7 +30,8 @@ type WorkerService struct {
 
 // About create a new worker service
 func NewWorkerService(	workerRepository *database.WorkerRepository) *WorkerService{
-	childLogger.Info().Str("func","NewWorkerService").Send()
+	childLogger.Info().
+				Str("func","NewWorkerService").Send()
 
 	return &WorkerService{
 		workerRepository: workerRepository,

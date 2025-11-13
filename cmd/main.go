@@ -1,11 +1,11 @@
 package main
 
 import(
+	"os"
 	"time"
 	"context"
 	
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/go-limit/internal/infra/configuration"
 	"github.com/go-limit/internal/core/model"
@@ -19,9 +19,12 @@ import(
 
 var(
 	logLevel = 	zerolog.InfoLevel // zerolog.InfoLevel zerolog.DebugLevel
-	childLogger = log.With().
+
+	childLogger  = zerolog.New(os.Stdout).
+						With().
 						Str("component","go-limit").
 						Str("package", "main").
+						Timestamp().
 						Logger()
 						
 	appServer		model.AppServer
@@ -31,10 +34,10 @@ var(
 
 // Above init
 func init(){
+	zerolog.SetGlobalLevel(logLevel)
+
 	childLogger.Info().
 				Str("func","init").Send()
-
-	zerolog.SetGlobalLevel(logLevel)
 
 	infoPod, server := configuration.GetInfoPod()
 	configOTEL 		:= configuration.GetOtelEnv()
@@ -67,7 +70,7 @@ func main (){
 			} else {
 				childLogger.Error().
 							Err(err).
-							Msg("Fatal Error open Database ABORTING !!!")
+							Msg("Fatal Error open Database ABORTING !!")
 				panic(err)
 			}
 			time.Sleep(3 * time.Second) //backoff

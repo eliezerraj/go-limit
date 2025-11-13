@@ -6,8 +6,6 @@ check if a limit was breach
 
 # tables
 
-
-
    table spend_limit
    id|category    |mcc |day|hour|minute|amount |created_at                   |
    --+------------+----+---+----+------+-------+-----------------------------+
